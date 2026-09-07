@@ -1,0 +1,20 @@
+name: phone_frame
+description: >-
+  On a computer, a Flutter web app drawn inside an iPhone and touched like one — the frame to
+  Apple's own measurements, the mouse arriving as a finger, and the phone shape held upright.
+version: 0.1.0
+repository: https://github.com/caiomourasud/phone_frame
+
+environment:
+  sdk: ^3.11.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+  # Used by hand in the two web-only shims: the screen's orientation, and the page's own cursor.
+  web: ^1.1.1
+
+dev_dependencies:
+  flutter_lints: ^6.0.0
+  flutter_test:
+    sdk: flutter

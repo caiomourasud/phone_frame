@@ -1,0 +1,6 @@
+include: package:flutter_lints/flutter.yaml
+
+# The project is written in 100 columns. Without this, `dart format` reformats
+# the whole repository to the default 80.
+formatter:
+  page_width: 100
