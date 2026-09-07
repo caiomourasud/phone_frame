@@ -103,6 +103,12 @@ length in millimetres.
   the arrow is taken away by writing `document.body.style.cursor` directly — the same property, and
   the same *remove it* for the default, that Flutter's own engine uses.
 
+## Coming from an app that already fakes a phone
+
+Most do: a frame with made-up measurements, a hard-coded safe area, a `- 20` in a bottom bar.
+[docs/migrating.md](docs/migrating.md) is what to delete, what will look different and why it is
+not a regression, and the four things that bite.
+
 ## Running the example
 
 ```bash
