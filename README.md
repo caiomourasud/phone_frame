@@ -42,7 +42,7 @@ MaterialApp(
 )
 ```
 
-That is everything for the frame, the touch and the home indicator. Two more things are the app's,
+That is everything for the frame, the touch and the home indicator. Three more things are the app's,
 not the package's:
 
 1. **To draw under the clock**, `web/index.html` has to ask for the screen — see
@@ -62,6 +62,10 @@ not the package's:
      }
    </script>
    ```
+3. **Spend the bottom inset the way your bottom bar's shape spends it.** Both shapes owe the home
+   indicator the same 34 points, and they pay in ways that are not interchangeable — following the
+   other shape's rule is what puts a bar on top of the indicator, or a band of the wrong colour
+   under one. See [The bottom bar](#the-bottom-bar-attached-or-floating).
 
 ## Why
 
@@ -211,23 +215,20 @@ iOS keeps the strip and paints it the `theme-color` meta — it reads that **onc
 ignores every change made afterwards, so an app whose theme the user can switch is stuck with
 whichever colour it opened with.
 
-## A bottom bar that touches the edge
+## The bottom bar, attached or floating
 
 `PhoneSafeArea` hands the app 34 points along the bottom — the home indicator's strip, which a phone
-browser knows about and does not pass on. What the app owes in return depends on the shape of its
-bottom bar, and only one of the two shapes owes nothing.
+browser knows about and does not pass on. **Both shapes of bottom bar owe those points**, and this
+is the part that is easy to get wrong: what differs is not whether the bar clears the indicator, but
+**what reaches the edge of the screen** while it does.
 
-A bar that **floats** — a pill with a margin around it — is already clear of the indicator. The
-margin is the clearance, the page shows underneath, and there is nothing to do. This is the shape
-the package was written against, so it is the shape that never revealed the rest of this section.
+Take the rule for your shape and leave the other one alone. They are not variations of each other —
+each is the bug the other one fixes.
 
-A bar that **touches the bottom edge** has to spend those points itself, and in two parts:
+### Attached to the edge
 
-- its **background** runs all the way down, so the colour reaches the end of the screen;
-- its **content** stops 34 points short, so no tab lands under the white line the system draws over
-  everything.
-
-Which is a background with an inner padding — not a shorter bar, and not a gap below it:
+The colour reaches the edge; the content stops short of it. A background with an inner padding —
+not a shorter bar, and not a gap below one:
 
 ```dart
 DecoratedBox(
@@ -239,13 +240,43 @@ DecoratedBox(
 )
 ```
 
-Read the inset; do not write `34` down. The same code is then right inside the frame, on the phone,
-and on a native build, and it is what a browser that starts reporting the truth would feed.
+The band of flat colour that leaves under the tabs — a third of the bar's height — is the
+indicator's, and a native app reserves exactly the same one. It reads as dead space in a screenshot
+and is right on glass; the screenshot just cannot show the line that is about to be drawn over it.
+Given to a floating bar, this rule paints a slab of bar colour across the bottom of the page.
 
-The result looks wrong in a screenshot before it looks right on glass: a band of flat background
-below the tabs, a third of the bar's height, apparently dead. That band is the indicator's, and a
-native app reserves exactly the same one — the screenshot just cannot show the line that is about
-to be drawn over it.
+### Floating
+
+Nothing reaches the edge — the page's own background shows underneath — and the pill's margin is
+**added to** the inset rather than standing in for it:
+
+```dart
+Padding(
+  padding: EdgeInsets.only(
+    left: 16,
+    right: 16,
+    bottom: 12 + MediaQuery.of(context).padding.bottom,   // the margin on top of the inset
+  ),
+  child: pill,
+)
+```
+
+A fixed `bottom: 12` is the version that looks right on a desk and sits on the indicator on a phone:
+the inset is 34 points, and 12 of margin does not clear it. This is the shape the package was
+written against, which is why it took an app of the other shape to find that the rule had never
+been written down.
+
+### And what each one owes the body
+
+- **Attached**: nothing. `Scaffold`'s `bottomNavigationBar` keeps the bar's height out of the body's
+  box, so a list ends above the bar on its own.
+- **Floating**: the bar sits over the body, so the body needs the bar's height as scroll padding.
+  Under `Scaffold.extendBody` the Scaffold hands that height to the body as
+  `MediaQuery.padding.bottom` — which is what a list wants and what a bottom sheet does not, so open
+  modals with `useRootNavigator: true`. See [docs/migrating.md](docs/migrating.md).
+
+Read the inset in both; never write `34` down. The same code is then right inside the frame, on the
+phone, and on a native build, and it is what a browser that starts reporting the truth would feed.
 
 ## Three things a browser will not do, and what happens instead
 
