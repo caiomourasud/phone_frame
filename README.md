@@ -13,6 +13,48 @@ MaterialApp(
 
 That is the whole setup. Nothing in `main`, nothing per screen.
 
+## Setting it up in a new app
+
+```yaml
+# pubspec.yaml
+environment:
+  sdk: ^3.11.0          # the package needs it
+
+dependencies:
+  phone_frame:
+    git:
+      url: https://github.com/caiomourasud/phone_frame.git
+      ref: main
+```
+
+```dart
+MaterialApp(
+  builder: PhoneOnTheWeb.builder,   // or PhoneOnTheWeb(desk:, homeIndicator:, child:) for colours
+  ...
+)
+```
+
+That is everything for the frame, the touch and the home indicator. Two more things are the app's,
+not the package's:
+
+1. **To draw under the clock**, `web/index.html` has to ask for the screen — see
+   [Drawing under the clock](#drawing-under-the-clock-what-indexhtml-has-to-say). Skip it and the
+   app simply keeps the system's strip; nothing breaks.
+2. **Build with `--pwa-strategy=none` while you are working on `index.html`.** Flutter's service
+   worker caches that file, so an installed copy keeps serving the old one — a fix can be deployed,
+   verified on the server, and still not be what the phone is running. It cost several rounds of
+   chasing the wrong cause in two apps before anyone suspected it. Keep this in `index.html` too,
+   for the copies installed while there still was a worker:
+
+   ```html
+   <script>
+     if ('serviceWorker' in navigator) {
+       navigator.serviceWorker.getRegistrations()
+         .then(function (all) { all.forEach(function (one) { one.unregister(); }); });
+     }
+   </script>
+   ```
+
 ## Why
 
 A phone app stretched across a monitor is not a preview of anything: a chord sheet a metre wide,
