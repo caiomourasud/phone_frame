@@ -18,11 +18,19 @@
 
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
+  <!-- Asks for the whole screen, so the app draws under the clock instead of iOS keeping that strip
+       and painting it. It is also what gives `env(safe-area-inset-top)` a height, which is where
+       PhoneSafeArea takes the top inset from. The engine replaces this meta on boot; the
+       MutationObserver in the body puts `viewport-fit` back. -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="description" content="A new Flutter project.">
 
   <!-- iOS meta tags & icons -->
   <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <!-- The pair of `viewport-fit=cover`: together they hand the app the strip the clock and the
+       battery live in, so its own background runs up under them and iOS draws the clock on top.
+       Alone, without `cover`, this is what paints the strip black. -->
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="phone_frame_example">
   <link rel="apple-touch-icon" href="icons/Icon-192.png">
 
@@ -31,6 +39,17 @@
 
   <title>phone_frame_example</title>
   <link rel="manifest" href="manifest.json">
+
+  <style>
+    /* `100vh`, NOT `100%`: under `cover`, `100%` does not count the area behind the status bar, the
+       document comes out shorter than the screen and a band of background is left along the bottom.
+       And nothing is added on top of the `100vh` — it is already the whole screen, and the extra
+       overshoots, pushing whatever is anchored to the bottom off the edge. */
+    html, body { margin: 0; padding: 0; height: 100vh; }
+
+    /* The element the Flutter view lives in, so the engine measures this rather than the document. */
+    #flutter-host { position: fixed; top: 0; left: 0; right: 0; height: 100vh; }
+  </style>
 </head>
 <body>
   <!--
@@ -41,6 +60,38 @@
     For more details:
     * https://docs.flutter.dev/platform-integration/web/initialization
   -->
-  <script src="flutter_bootstrap.js" async></script>
+  <!--
+    Kills any service worker an earlier deploy left behind. The build ships without one
+    (`--pwa-strategy=none`), because Flutter's worker serves the cached index.html for a whole extra
+    load: a fix can be published and verified on the server and still not be what the phone is
+    running. This is for the copies installed while there still was a worker.
+  -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations().then(function (all) {
+        all.forEach(function (one) { one.unregister(); });
+      });
+    }
+    if (window.caches) {
+      caches.keys().then(function (names) {
+        names.forEach(function (name) { caches.delete(name); });
+      });
+    }
+  </script>
+
+  <script>
+    /* The engine removes every viewport meta and writes its own, which has no `viewport-fit` — and
+       it measures the page right after, during initialization, so Dart is too late to fix it. This
+       puts `cover` back the moment the engine's meta appears. */
+    new MutationObserver(function () {
+      var m = document.querySelector('meta[name="viewport"]');
+      if (m && m.content.indexOf('viewport-fit') === -1) {
+        m.content += ', viewport-fit=cover';
+      }
+    }).observe(document.head, {childList: true, subtree: true, attributes: true});
+  </script>
+
+  <div id="flutter-host"></div>
+  <script>{{flutter_bootstrap_js}}</script>
 </body>
 </html>

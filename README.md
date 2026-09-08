@@ -27,6 +27,14 @@ dependencies:
       ref: main
 ```
 
+> `ref: main` names a branch, but `pubspec.lock` pins the **commit** it resolved to the day the
+> dependency went in, and `pub get` honours the lock. An app that took the package before a change
+> here keeps the old one indefinitely, and the symptom is not a version error — it is a feature
+> quietly not being there. One app's content collided with the clock for a whole round of debugging
+> because its lock predated the commit that taught `PhoneSafeArea` about the top; everything else in
+> the recipe was already right. `flutter pub upgrade phone_frame` is what moves it, and
+> `grep -c safe-area-inset-top build/web/main.dart.js` says whether the reader actually shipped.
+
 ```dart
 MaterialApp(
   builder: PhoneOnTheWeb.builder,   // or PhoneOnTheWeb(desk:, homeIndicator:, child:) for colours
@@ -134,8 +142,9 @@ length in millimetres.
 
 ## Drawing under the clock: what `index.html` has to say
 
-The package can put the app under the clock, but it cannot ask for the room — that is four lines of
-`web/index.html`, and without them the browser keeps the strip and paints it itself.
+The package can put the app under the clock, but it cannot ask for the room — that is a handful of
+lines of `web/index.html` plus a templated `flutter_bootstrap.js`, and without them the browser
+keeps the strip and paints it itself.
 
 ```html
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
@@ -148,6 +157,31 @@ The package can put the app under the clock, but it cannot ask for the room — 
    `100vh` is already the whole screen here — do not add `env(safe-area-inset-top)` on top of it,
    which overshoots and pushes anything anchored to the bottom off the edge. */
 html, body { margin: 0; padding: 0; height: 100vh; }
+
+/* An element of the app's own for the Flutter view to live in. */
+#flutter-host { position: fixed; top: 0; left: 0; right: 0; height: 100vh; }
+```
+
+That last one is not decoration. Handed a host, the engine measures **that element**, through a
+`ResizeObserver` on it; handed nothing, it measures `documentElement.clientHeight`, which under
+`cover` leaves out the strip behind the status bar and reports a viewport shorter than the screen.
+So the host is named where the loader is called, which means the bootstrap is the app's rather than
+the default one:
+
+```js
+// web/flutter_bootstrap.js — the two tokens are substituted at build time
+{{flutter_js}}
+{{flutter_build_config}}
+
+_flutter.loader.load({
+  config: {hostElement: document.querySelector('#flutter-host')},
+});
+```
+
+```html
+<!-- web/index.html, in the body: the host, then that file inlined -->
+<div id="flutter-host"></div>
+<script>{{flutter_bootstrap_js}}</script>
 ```
 
 Then [PhoneSafeArea] reads `env(safe-area-inset-top)` and hands the app the inset, so the content
@@ -176,6 +210,42 @@ the clock over it and picks no background of its own, which is the point. With `
 iOS keeps the strip and paints it the `theme-color` meta — it reads that **once, at launch**, and
 ignores every change made afterwards, so an app whose theme the user can switch is stuck with
 whichever colour it opened with.
+
+## A bottom bar that touches the edge
+
+`PhoneSafeArea` hands the app 34 points along the bottom — the home indicator's strip, which a phone
+browser knows about and does not pass on. What the app owes in return depends on the shape of its
+bottom bar, and only one of the two shapes owes nothing.
+
+A bar that **floats** — a pill with a margin around it — is already clear of the indicator. The
+margin is the clearance, the page shows underneath, and there is nothing to do. This is the shape
+the package was written against, so it is the shape that never revealed the rest of this section.
+
+A bar that **touches the bottom edge** has to spend those points itself, and in two parts:
+
+- its **background** runs all the way down, so the colour reaches the end of the screen;
+- its **content** stops 34 points short, so no tab lands under the white line the system draws over
+  everything.
+
+Which is a background with an inner padding — not a shorter bar, and not a gap below it:
+
+```dart
+DecoratedBox(
+  decoration: BoxDecoration(color: barColour),          // reaches the edge
+  child: Padding(
+    padding: EdgeInsets.only(bottom: MediaQuery.of(context).padding.bottom),
+    child: SizedBox(height: 64, child: tabs),           // stops above the indicator
+  ),
+)
+```
+
+Read the inset; do not write `34` down. The same code is then right inside the frame, on the phone,
+and on a native build, and it is what a browser that starts reporting the truth would feed.
+
+The result looks wrong in a screenshot before it looks right on glass: a band of flat background
+below the tabs, a third of the bar's height, apparently dead. That band is the indicator's, and a
+native app reserves exactly the same one — the screenshot just cannot show the line that is about
+to be drawn over it.
 
 ## Three things a browser will not do, and what happens instead
 
