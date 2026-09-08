@@ -2,6 +2,8 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+import 'status_bar_inset.dart';
+
 /// The insets a phone's browser knows about and does not pass on.
 ///
 /// On a phone the app is drawn edge to edge, and `MediaQuery.padding` comes back **zero**: the
@@ -15,8 +17,15 @@ import 'package:flutter/material.dart';
 /// app is for, and it is only ever **added** to what the browser reports: the day a browser starts
 /// telling the truth, the truth wins.
 ///
-/// The top is deliberately not touched. iOS keeps that strip for itself and hands the page what is
-/// left, so insetting it again would leave a band of nothing under the clock.
+/// The top is only touched when the page is the one drawing under the clock — that is, when it
+/// asked for the whole screen with `viewport-fit=cover`. Then, and only then,
+/// `env(safe-area-inset-top)` has a height in it, and [statusBarInset] hands it over; without
+/// `cover` the browser keeps that strip and answers zero, and insetting it again would leave a band
+/// of nothing under the clock. So the same code is right either way, and an app that has not opted
+/// into `cover` sees no change at all.
+///
+/// Unlike the bottom, this number is not written down here: CSS knows the real one for the phone in
+/// hand, and asking is better than guessing at every screen ever made.
 ///
 /// And a phone lying on its side is not touched at all, for the same reason one step further: in
 /// landscape the browser hands the page a viewport already clear of the system's furniture — the
@@ -35,7 +44,10 @@ class PhoneSafeArea extends StatelessWidget {
   Widget build(BuildContext context) {
     final media = MediaQuery.of(context);
     if (media.size.width > media.size.height) return child;
-    final padding = media.padding.copyWith(bottom: math.max(media.padding.bottom, homeIndicator));
+    final padding = media.padding.copyWith(
+      top: math.max(media.padding.top, statusBarInset()),
+      bottom: math.max(media.padding.bottom, homeIndicator),
+    );
     return MediaQuery(
       data: media.copyWith(padding: padding, viewPadding: padding),
       child: child,

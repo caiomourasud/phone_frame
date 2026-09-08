@@ -90,6 +90,51 @@ length in millimetres.
 - **`PortraitLock`** — the app laid out in portrait and turned back by however far the display was
   turned, which is what a locked native app looks like once the phone is sideways: nothing reflows.
 
+## Drawing under the clock: what `index.html` has to say
+
+The package can put the app under the clock, but it cannot ask for the room — that is four lines of
+`web/index.html`, and without them the browser keeps the strip and paints it itself.
+
+```html
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+```
+
+```css
+/* NOT `height: 100%`. Under `cover`, `100%` does not count the area behind the status bar: the
+   document comes out shorter than the screen and a band of background is left along the bottom.
+   `100vh` is already the whole screen here — do not add `env(safe-area-inset-top)` on top of it,
+   which overshoots and pushes anything anchored to the bottom off the edge. */
+html, body { margin: 0; padding: 0; height: 100vh; }
+```
+
+Then [PhoneSafeArea] reads `env(safe-area-inset-top)` and hands the app the inset, so the content
+clears the clock while the background runs behind it. An app that skips this sees no change: without
+`cover` the value is zero and nothing is inset.
+
+One thing the engine undoes on the way in: **Flutter removes every viewport meta on the page and
+writes its own, which has no `viewport-fit`.** Putting it back from Dart is too late — the engine
+measures the page during initialization, before `main` — so it goes back the moment the engine's
+meta appears:
+
+```html
+<script>
+  new MutationObserver(function () {
+    var m = document.querySelector('meta[name="viewport"]');
+    if (m && m.content.indexOf('viewport-fit') === -1) {
+      m.content += ', viewport-fit=cover';
+    }
+  }).observe(document.head, {childList: true, subtree: true, attributes: true});
+</script>
+```
+
+And the trade to know before taking it: `black-translucent` hands the strip to the app, so the app's
+own colour runs up under the clock and there is no band of a different colour to match. iOS draws
+the clock over it and picks no background of its own, which is the point. With `default` instead,
+iOS keeps the strip and paints it the `theme-color` meta — it reads that **once, at launch**, and
+ignores every change made afterwards, so an app whose theme the user can switch is stuck with
+whichever colour it opened with.
+
 ## Three things a browser will not do, and what happens instead
 
 - **iOS will not lock the orientation.** `lockToPortrait()` is asked for anyway — it is granted to an
