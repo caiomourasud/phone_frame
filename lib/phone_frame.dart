@@ -6,11 +6,13 @@
 /// over the glass.
 library;
 
+export 'src/keyboard_inset.dart';
 export 'src/phone_button.dart';
 export 'src/phone_frame.dart';
 export 'src/phone_on_the_web.dart';
 export 'src/phone_safe_area.dart';
 export 'src/portrait_lock.dart';
 export 'src/screen_orientation.dart' show displayRotation, lockToPortrait;
+export 'src/visible_page_height.dart' show visiblePageHeight;
 export 'src/touch_dot.dart';
 export 'src/touch_emulation.dart';

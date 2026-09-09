@@ -1,3 +1,12 @@
+## 0.2.0
+
+- `KeyboardInset`, the on-screen keyboard handed to the app as `MediaQuery.viewInsets` where the
+  engine will not: a page hosted in an element of its own is told the keyboard is zero points tall
+  and never asked again, so a field tapped near the bottom of the screen stayed under the keys with
+  nothing in the app able to know.
+- `PhoneSafeArea` takes whatever the keyboard covers off the strips the app lays out against, so
+  the home indicator's 34 points stop standing between a field and the keys.
+
 ## 0.1.0
 
 First cut, lifted out of [Vibra](https://caiomourasud.github.io/vibra-web/), where every piece of

@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+import 'keyboard_inset.dart';
 import 'status_bar_inset.dart';
 
 /// The insets a phone's browser knows about and does not pass on.
@@ -27,6 +28,10 @@ import 'status_bar_inset.dart';
 /// Unlike the bottom, this number is not written down here: CSS knows the real one for the phone in
 /// hand, and asking is better than guessing at every screen ever made.
 ///
+/// Whatever the keyboard is already covering comes back off both, which is what the framework does
+/// with the numbers a phone reports and what keeps a strip of nothing from standing between a field
+/// and the keys. Where the keyboard comes from on the web is [KeyboardInset].
+///
 /// And a phone lying on its side is not touched at all, for the same reason one step further: in
 /// landscape the browser hands the page a viewport already clear of the system's furniture — the
 /// notch's strip and the indicator's are outside it, which you can see by the page not reaching the
@@ -44,13 +49,30 @@ class PhoneSafeArea extends StatelessWidget {
   Widget build(BuildContext context) {
     final media = MediaQuery.of(context);
     if (media.size.width > media.size.height) return child;
-    final padding = media.padding.copyWith(
-      top: math.max(media.padding.top, statusBarInset()),
-      bottom: math.max(media.padding.bottom, homeIndicator),
+    final viewPadding = media.viewPadding.copyWith(
+      top: math.max(media.viewPadding.top, statusBarInset()),
+      bottom: math.max(media.viewPadding.bottom, homeIndicator),
     );
     return MediaQuery(
-      data: media.copyWith(padding: padding, viewPadding: padding),
+      data: media.copyWith(padding: _laidOutAgainst(viewPadding, media), viewPadding: viewPadding),
       child: child,
     );
   }
+
+  /// The same strips, as far as they are still worth avoiding.
+  ///
+  /// `viewPadding` is where the screen's own furniture is and does not move; `padding` is what the
+  /// app lays out against, and the framework's rule for the difference is that an inset something
+  /// else is already covering is not padding any more. The keyboard is that something else: with
+  /// the keys up over the home indicator, an app still holding its 34 points would keep a strip of
+  /// nothing between the field being typed into and the keyboard.
+  ///
+  /// It is the same arithmetic `MediaQueryData.fromView` does, and it is done here because the
+  /// numbers above are ours: the platform subtracted the keyboard from a `padding` that did not
+  /// have the home indicator in it yet.
+  static EdgeInsets _laidOutAgainst(EdgeInsets viewPadding, MediaQueryData media) =>
+      viewPadding.copyWith(
+        top: math.max(0, viewPadding.top - media.viewInsets.top),
+        bottom: math.max(0, viewPadding.bottom - media.viewInsets.bottom),
+      );
 }

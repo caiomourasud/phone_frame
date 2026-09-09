@@ -140,7 +140,10 @@ length in millimetres.
   glass the arrow comes straight back.
 - **`PhoneSafeArea`** — the home indicator's 34 points, which a phone browser knows about and does
   not pass on. Only ever *added* to what the browser reports, only in portrait, and never at the top
-  (iOS keeps that strip itself).
+  (iOS keeps that strip itself). Whatever the keyboard covers comes back off it.
+- **`KeyboardInset`** — the on-screen keyboard, measured off `visualViewport` and handed to the app
+  as `MediaQuery.viewInsets`, for the embedding the engine will not report it for. It only ever
+  fills in a silence: where the platform does say, what it says stands.
 - **`PortraitLock`** — the app laid out in portrait and turned back by however far the display was
   turned, which is what a locked native app looks like once the phone is sideways: nothing reflows.
 
@@ -278,7 +281,7 @@ been written down.
 Read the inset in both; never write `34` down. The same code is then right inside the frame, on the
 phone, and on a native build, and it is what a browser that starts reporting the truth would feed.
 
-## Three things a browser will not do, and what happens instead
+## Four things a browser will not do, and what happens instead
 
 - **iOS will not lock the orientation.** `lockToPortrait()` is asked for anyway — it is granted to an
   installed copy on Android — but WebKit ships `screen.orientation.lock()` behind an experimental
@@ -287,6 +290,13 @@ phone, and on a native build, and it is what a browser that starts reporting the
 - **Safari keeps a band of its own in landscape.** The page is handed a viewport already clear of the
   notch and the home indicator, which is why `PhoneSafeArea` adds nothing in that shape, and why
   there is black past the edge of the app that no app can draw in.
+- **The keyboard is not a resize.** It covers the page rather than shortening it: the layout
+  viewport — what `100vh` measures, and what Flutter is laid out in — stays the full height of the
+  screen. Flutter reads the visual viewport for a page that fills the window, but a page hosted in
+  an element of its own (`hostElement`) is told the keyboard is zero points tall and never asked
+  again, because a host pinned at `100vh` is exactly what the keyboard does not resize. So the
+  `Scaffold` did not shrink and a field tapped near the bottom stayed under the keys.
+  `KeyboardInset` measures it and puts the number where the framework already looks.
 - **The cursor is CSS, not Flutter.** With no mouse events left, no `MouseRegion` can change one. So
   the arrow is taken away by writing `document.body.style.cursor` directly — the same property, and
   the same *remove it* for the default, that Flutter's own engine uses.

@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 
+import 'keyboard_inset.dart';
 import 'phone_frame.dart';
 import 'phone_safe_area.dart';
 import 'portrait_lock.dart';
@@ -26,7 +27,8 @@ import 'screen_orientation.dart';
 ///   of text wraps. It is also touched like one: the mouse arrives as a finger, nothing hovers, a
 ///   drag scrolls, and the arrow becomes a fingertip over the glass. See [PhoneFrame].
 /// - **Anything smaller is a phone already**, and what it needs is the opposite: the insets the
-///   browser withholds ([PhoneSafeArea]) and to be held upright when the page turns with the phone
+///   browser withholds ([PhoneSafeArea]), the keyboard the browser covers the app with and does not
+///   mention ([KeyboardInset]), and to be held upright when the page turns with the phone
 ///   ([PortraitLock]).
 ///
 /// The line between the two is [framesTheApp], measured on the **window** and never on the user
@@ -76,9 +78,14 @@ class _PhoneOnTheWebState extends State<PhoneOnTheWeb> {
     if (framesTheApp(MediaQuery.sizeOf(context))) {
       return PhoneFrame(desk: widget.desk, homeIndicator: widget.homeIndicator, child: child);
     }
-    // The safe area stands outside the lock on purpose: out there it can see the shape of the
+    // The keyboard stands outside the safe area, because the safe area's own answer depends on it:
+    // the home indicator's strip is only worth avoiding while nothing else is over it.
+    //
+    // And the safe area stands outside the lock on purpose: out there it can see the shape of the
     // window, which is how it knows a phone lying down needs nothing written down for it — and
     // whatever the browser did report is turned along with the app by the lock.
-    return PhoneSafeArea(child: PortraitLock(child: child));
+    return KeyboardInset(
+      child: PhoneSafeArea(child: PortraitLock(child: child)),
+    );
   }
 }
