@@ -1,3 +1,14 @@
+## 0.2.1
+
+- `KeyboardInset` brings the field being typed into up above the keys, which making the room does
+  not do on its own: the framework's own scroll is wired to the *view's* insets, and those are the
+  ones the engine will not report. A field left under the keyboard is also what makes iOS scroll
+  the page to reveal the browser's input element, which slid the app off the top of the screen and
+  dismissed the keyboard at the first drag — so the page is put back too.
+- The `MediaQuery` it writes now stands whether or not the keyboard is up. Dropping it while there
+  was nothing to say changed the depth of the tree the moment there was, so everything under it was
+  rebuilt from nothing and the focus went with it: the keyboard opened and closed again.
+
 ## 0.2.0
 
 - `KeyboardInset`, the on-screen keyboard handed to the app as `MediaQuery.viewInsets` where the

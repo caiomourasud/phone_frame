@@ -30,7 +30,10 @@ ValueListenable<double?> visiblePageHeight() {
   if (viewport == null) return _visible;
   if (!_listening) {
     _listening = true;
-    final read = ((web.Event _) => _visible.value = _read(viewport)).toJS;
+    final read = ((web.Event _) {
+      putThePageBack();
+      _visible.value = _read(viewport);
+    }).toJS;
     viewport.addEventListener('resize', read);
     // The keyboard covers the page, and iOS may also slide it to bring the field into what is
     // left — a scroll of the visual viewport, with no resize of anything.
@@ -68,4 +71,22 @@ bool _typing() {
   final active = web.document.activeElement;
   if (active == null) return false;
   return active.tagName == 'INPUT' || active.tagName == 'TEXTAREA';
+}
+
+/// Undoes the scroll iOS does when the keyboard comes up over the field being typed into.
+///
+/// iOS answers an input under the keyboard by scrolling the page up to reveal it, and stays there.
+/// The keyboard does not shorten the layout viewport, which is what the app is drawn in, so that
+/// scroll takes the top of the app off the screen and reveals its own background past the end of
+/// its content along the bottom — the app looking like it slid, when all that moved was the page
+/// around it.
+///
+/// The page a Flutter app is hosted in has nothing of its own to scroll, so putting it back costs
+/// nothing. The check is what keeps this from answering its own event, and what leaves alone every
+/// browser that never did it.
+///
+/// It is the second half of a pair: [KeyboardInset.reveal] is what stops iOS from wanting to
+/// scroll in the first place, by bringing the field above the keys where it can see it.
+void putThePageBack() {
+  if (web.window.scrollY != 0) web.window.scrollTo(0.toJS, 0);
 }

@@ -67,6 +67,76 @@ void main() {
     expect(data.viewInsets.bottom, 336);
   });
 
+  testWidgets('the keyboard opening does not take the app down with it', (tester) async {
+    tester.view.physicalSize = const Size(402, 874);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+
+    final visible = ValueNotifier<double?>(null);
+    addTearDown(visible.dispose);
+    await tester.pumpWidget(
+      MediaQuery(
+        data: const MediaQueryData(size: Size(402, 874)),
+        child: KeyboardInset(
+          visible: () => visible,
+          child: MaterialApp(
+            home: Scaffold(body: TextField(key: const ValueKey('field'))),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.byKey(const ValueKey('field')));
+    await tester.pump();
+    final typingInto = FocusManager.instance.primaryFocus;
+
+    visible.value = 538;
+    await tester.pumpAndSettle();
+
+    // The `MediaQuery` this widget writes has to stand whether or not the keyboard is up: taking
+    // it out of the tree while there is nothing to say and putting it back when there is changes
+    // the depth of everything under it, so the app is rebuilt from nothing — and the focus goes
+    // with it, closing the keyboard that had just opened.
+    expect(FocusManager.instance.primaryFocus, same(typingInto));
+  });
+
+  testWidgets('the field being typed into is brought up above the keys', (tester) async {
+    tester.view.physicalSize = const Size(402, 874);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+
+    final visible = ValueNotifier<double?>(null);
+    addTearDown(visible.dispose);
+    await tester.pumpWidget(
+      MediaQuery(
+        data: const MediaQueryData(size: Size(402, 874)),
+        child: KeyboardInset(
+          visible: () => visible,
+          child: MaterialApp(
+            home: Scaffold(
+              body: ListView(
+                children: [
+                  const SizedBox(height: 780),
+                  TextField(key: const ValueKey('field')),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    // Near the bottom of the screen, which is where the keyboard is about to be.
+    expect(tester.getRect(find.byKey(const ValueKey('field'))).top, 780);
+
+    await tester.tap(find.byKey(const ValueKey('field')));
+    await tester.pump();
+    visible.value = 538;
+    await tester.pumpAndSettle();
+
+    // Above the keys. The framework would have done this itself if the engine had reported the
+    // keyboard: it listens for the *view's* insets to grow, and those never do here.
+    expect(tester.getRect(find.byKey(const ValueKey('field'))).bottom, lessThanOrEqualTo(538));
+  });
+
   testWidgets('the keyboard opening moves what the app has room for', (tester) async {
     tester.view.physicalSize = const Size(402, 874);
     tester.view.devicePixelRatio = 1;

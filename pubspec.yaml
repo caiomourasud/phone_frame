@@ -2,7 +2,7 @@ name: phone_frame
 description: >-
   On a computer, a Flutter web app drawn inside an iPhone and touched like one — the frame to
   Apple's own measurements, the mouse arriving as a finger, and the phone shape held upright.
-version: 0.2.0
+version: 0.2.1
 repository: https://github.com/caiomourasud/phone_frame
 
 environment:
